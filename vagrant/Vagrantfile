@@ -1,0 +1,96 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+PUPPET_VERSION = "8.4.0-1jammy"
+NUM_AGENTS = 1
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-24.04"
+
+  config.vm.define 'puppet' do |puppet|
+    puppet.vm.hostname = 'puppet.localdomain'
+    puppet.vm.network "private_network", ip: "192.168.56.10"
+    puppet.vm.provider :virtualbox do |v|
+      v.memory = 4096
+    end
+
+    puppet.vm.provision "file", source: "../.vimrc", destination: "/home/vagrant/.vimrc"
+    puppet.vm.provision "shell", inline: %Q{
+      apt-get update && apt-get -y install wget ca-certificates
+      wget https://apt.puppetlabs.com/puppet8-release-jammy.deb
+      dpkg -i puppet8-release-jammy.deb && apt-get update
+      apt-get -y install git vim tree puppetserver=#{PUPPET_VERSION}
+      apt-mark hold puppetserver
+
+      mkdir -p /etc/puppetlabs/puppet
+      echo "*.localdomain" > /etc/puppetlabs/puppet/autosign.conf
+      cat > /etc/puppetlabs/puppet/puppet.conf <<-'EOF'
+	[master]
+	autosign = /etc/puppetlabs/puppet/autosign.conf
+	EOF
+
+      systemctl start puppetserver && systemctl enable puppetserver
+      sleep 10
+
+      echo 'PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/puppetlabs/bin"' > /etc/environment
+      echo 'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/puppetlabs/bin"' >> /root/.bashrc
+      echo 'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/puppetlabs/bin"' >> /home/vagrant/.bashrc
+
+      cat >> /home/vagrant/.bashrc <<-'EOF'
+	alias p='puppet'
+	alias pp='puppet apply'
+	alias pgt='puppet agent -t'
+	EOF
+
+      cp /home/vagrant/.vimrc /root/.vimrc
+      cp /home/vagrant/.bashrc /root/.bashrc
+    }
+  end
+
+  (1..NUM_AGENTS).each do |i|
+    config.vm.define "puppet-agent#{i}" do |agent|
+      agent.vm.hostname = "agent#{i}.localdomain"
+      agent.vm.network "private_network", ip: "192.168.56.#{10 + i}"
+      agent.vm.provider :virtualbox do |v|
+        v.memory = 2048
+      end
+
+      agent.vm.provision "file", source: "../.vimrc", destination: "/home/vagrant/.vimrc"
+      agent.vm.provision "shell", inline: %Q{
+        apt-get update && apt-get -y install wget ca-certificates
+        wget https://apt.puppetlabs.com/puppet8-release-jammy.deb
+        dpkg -i puppet8-release-jammy.deb && apt-get update
+        apt-get -y install git vim puppet-agent=#{PUPPET_VERSION}
+        apt-mark hold puppet-agent
+
+        echo "192.168.56.10 puppet.localdomain puppet" >> /etc/hosts
+
+        mkdir -p /etc/puppetlabs/puppet
+        cat > /etc/puppetlabs/puppet/puppet.conf <<-'EOF'
+	[main]
+	server = puppet.localdomain
+	ssldir = /etc/puppetlabs/puppet/ssl
+	confdir = /etc/puppetlabs/puppet
+	EOF
+
+        echo 'PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/puppetlabs/bin"' > /etc/environment
+        echo 'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/puppetlabs/bin"' >> /root/.bashrc
+        echo 'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/puppetlabs/bin"' >> /home/vagrant/.bashrc
+
+        cat >> /home/vagrant/.bashrc <<-'EOF'
+	alias p='puppet'
+	alias pp='puppet apply'
+	alias pgt='puppet agent -t'
+	EOF
+
+        export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/puppetlabs/bin"
+
+        cp /home/vagrant/.vimrc /root/.vimrc
+        cp /home/vagrant/.bashrc /root/.bashrc
+
+       puppet agent --test
+
+      }
+    end
+  end
+end
