@@ -1,0 +1,41 @@
+# Vagrant files
+.vagrant/
+
+# VirtualBox files
+*.vdi
+*.vmdk
+*.vbox
+*.vbox-prev
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-*
+
+# SSH keys (if any are generated)
+*.pem
+*.key
+id_rsa*
+
+# Puppet specific
+*.pem
+ssl/
+manifests/
+Puppet-modules/

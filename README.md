@@ -36,7 +36,14 @@ Additional agents will be automatically assigned IP addresses in sequence:
    vagrant up
    ```
 
-2. **The environment is ready to use!**
+2. **For local development with VS Code:**
+
+   ```bash
+   # Edit Puppet code locally - changes sync automatically to VMs
+   code manifests/ puppet-modules/
+   ```
+
+3. **The environment is ready to use!**
 
    The Vagrantfile automatically:
    - Configures DNS resolution in `/etc/hosts`
@@ -44,7 +51,7 @@ Additional agents will be automatically assigned IP addresses in sequence:
    - Runs the initial puppet agent connection
    - Configures proper PATH and aliases
 
-3. **Test the setup:**
+4. **Test the setup:**
 
    ```bash
    # SSH to agent
@@ -84,9 +91,7 @@ Notice: Applied catalog in 0.01 seconds
 Create a basic manifest to test functionality:
 
 ```bash
-# On puppet server
-sudo mkdir -p /etc/puppetlabs/code/environments/production/manifests
-
+# On puppet server - directory already exists via synced folder
 sudo tee /etc/puppetlabs/code/environments/production/manifests/site.pp << 'EOF'
 node 'agent1.localdomain' {
   file { '/tmp/puppet-test.txt':
@@ -183,17 +188,6 @@ The environment uses autosign, so certificate issues should be rare. If you enco
 - **Agent Config**: `/etc/puppetlabs/puppet/puppet.conf`
 - **Agent Logs**: `/var/log/puppetlabs/puppet/`
 
-### Sample Agent Configuration
-
-```ini
-[main]
-server = puppet.localdomain
-ca_server = puppet.localdomain
-runinterval = 30m
-
-[agent]
-report = true
-```
 
 ## Useful Commands
 
