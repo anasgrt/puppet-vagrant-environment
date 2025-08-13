@@ -23,6 +23,7 @@ Vagrant.configure("2") do |config|
       apt-get update && apt-get -y install wget ca-certificates
       wget https://apt.puppetlabs.com/puppet8-release-jammy.deb
       dpkg -i puppet8-release-jammy.deb && apt-get update
+      rm -f puppet8-release-jammy.deb*
       apt-get -y install git vim tree puppetserver=#{PUPPET_VERSION}
       apt-mark hold puppetserver
 
@@ -64,6 +65,7 @@ Vagrant.configure("2") do |config|
         apt-get update && apt-get -y install wget ca-certificates
         wget https://apt.puppetlabs.com/puppet8-release-jammy.deb
         dpkg -i puppet8-release-jammy.deb && apt-get update
+        rm -f puppet8-release-jammy.deb*
         apt-get -y install git vim puppet-agent=#{PUPPET_VERSION}
         apt-mark hold puppet-agent
 
@@ -92,7 +94,7 @@ Vagrant.configure("2") do |config|
         cp /home/vagrant/.vimrc /root/.vimrc
         cp /home/vagrant/.bashrc /root/.bashrc
 
-       puppet agent --test
+        puppet agent --test
 
       }
     end
