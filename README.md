@@ -2,11 +2,51 @@
 
 This Vagrant environment sets up a complete Puppet infrastructure with a Puppet server and multiple agents for learning and testing purposes.
 
+## Prerequisites
+
+- VirtualBox installed
+- Vagrant installed
+- At least 6GB of free RAM (add 2GB per additional agent)
+
 ## Architecture
 
 - **Puppet Server**: `puppet.localdomain` (192.168.56.10) - Ubuntu 24.04 with 4GB RAM
 - **Puppet Agents**: By default, one agent is created:
   - `agent1.localdomain` (192.168.56.11) - Ubuntu 24.04 with 2GB RAM
+
+Below is an ASCII diagram illustrating the structure of the Puppet Master (Server) and Agent (Slave) setup as provisioned by this Vagrantfile:
+
+```text
+         +------------------------+            +-----------------------------+
+         |                        |            |                             |
+         |  Puppet Master         |            |  Puppet Agent(s)            |
+         |  (puppet.localdomain)  | <----------|  (agent1.localdomain,...)   |
+         |  192.168.56.10         |            |  192.168.56.11+             |
+         |                        |            |                             |
+         +------------------------+            +-----------------------------+
+                  ^                                           |
+                  |                                           |
+                  +-------------------------------------------+
+                        (Puppet Code, Catalogs, Reports)
+
+```
+
+- The **Puppet Master** (Server) compiles and serves configuration catalogs to the agents.
+- **Puppet Agents** periodically request their configuration from the master and apply it locally.
+- Communication is secured via SSL certificates (autosigned for local development).
+
+### What does the Vagrantfile do?
+
+The provided `Vagrantfile` automates the setup of this environment:
+
+- **Provisions one Puppet Master** (`puppet.localdomain`) and one or more Puppet Agents (`agent1.localdomain`, etc.) as VirtualBox VMs.
+- **Configures networking** so all VMs are on a private network and can communicate.
+- **Installs Puppet Server and Agent** packages at the specified version.
+- **Sets up code syncing**: Puppet modules and manifests from your local project are synced into the master VM for live development.
+- **Bootstraps configuration**: Handles SSL, autosigning, and environment variables for seamless agent-master communication.
+- **Customizes shell and editor**: Copies `.vimrc` and sets up useful shell aliases for development.
+
+This lets you quickly spin up a realistic Puppet infrastructure for testing, learning, or module development, all managed from a single Vagrantfile.
 
 ### Scaling Agents
 
@@ -22,12 +62,6 @@ Additional agents will be automatically assigned IP addresses in sequence:
 - `agent3.localdomain` (192.168.56.13)
 - And so on...
 
-## Prerequisites
-
-- VirtualBox installed
-- Vagrant installed
-- At least 6GB of free RAM (add 2GB per additional agent)
-
 ## Quick Start
 
 1. **Bring up the environment:**
@@ -36,22 +70,7 @@ Additional agents will be automatically assigned IP addresses in sequence:
    vagrant up
    ```
 
-2. **For local development with VS Code:**
-
-   ```bash
-   # Edit Puppet code locally - changes sync automatically to VMs
-   code manifests/ puppet-modules/
-   ```
-
-3. **The environment is ready to use!**
-
-   The Vagrantfile automatically:
-   - Configures DNS resolution in `/etc/hosts`
-   - Sets up autosign for `*.localdomain` certificates
-   - Runs the initial puppet agent connection
-   - Configures proper PATH and aliases
-
-4. **Test the setup:**
+2. **Test the setup:**
 
    ```bash
    # SSH to agent
@@ -59,30 +78,13 @@ Additional agents will be automatically assigned IP addresses in sequence:
 
    # Run puppet agent (should work immediately)
    sudo puppet agent --test --noop
+
+3. **For local development with VS Code:**
+
+   ```bash
+   # Edit Puppet code locally - changes sync automatically to VMs
+   code manifests/ puppet-modules/
    ```
-
-## Detailed Setup Steps
-
-### Network Configuration
-
-The Vagrantfile configures a private network allowing the VMs to communicate:
-
-- Puppet Server: `192.168.56.10`
-- Puppet Agent: `192.168.56.11`
-
-### Expected Output
-
-When everything is working correctly, you should see:
-
-```text
-Info: Using environment 'production'
-Info: Retrieving pluginfacts
-Info: Retrieving plugin
-Notice: Requesting catalog from puppet:8140 (192.168.56.10)
-Notice: Catalog compiled by puppet.localdomain
-Info: Applying configuration version '1752692125'
-Notice: Applied catalog in 0.01 seconds
-```
 
 ## Creating Test Manifests
 
@@ -207,105 +209,3 @@ pgt                            # alias for 'puppet agent -t'
 ## Resources
 
 - [Puppet Documentation](https://puppet.com/docs/)
-
-## Puppet Agent Initial Run Process Flow
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                          PUPPET AGENT RUN PROCESS                               │
-│                         (When state.yaml gets created)                          │
-└─────────────────────────────────────────────────────────────────────────────────┘
-
-    AGENT (192.168.56.11)                    PUPPET SERVER (192.168.56.10)
-    ┌─────────────────┐                      ┌─────────────────────────────┐
-    │ agent1.local    │                      │     puppet.local            │
-    │                 │                      │                             │
-    └─────────────────┘                      └─────────────────────────────┘
-            │                                               │
-            │                                               │
-    ┌───────▼────────┐                                      │
-    │ 1. START RUN   │                                      │
-    │ puppet agent   │                                      │
-    │ --test         │                                      │
-    └───────┬────────┘                                      │
-            │                                               │
-            │ ── SSL Certificate Check ──────────────────▶  │
-            │                                               │
-            │ ◀────── Certificate Valid ─────────────────── │
-            │                                               │
-    ┌───────▼────────┐                                      │
-    │ 2. REQUEST     │ ── "Send me catalog for" ────────▶   │
-    │ CATALOG        │    "agent1.localdomain"              │
-    └───────┬────────┘                              ┌───────▼────────-┐
-            │                                       │ 3. COMPILE      │
-            │                                       │ CATALOG         │
-            │                                       │ - Read manifests│
-            │                                       │ - Apply facts   │
-            │                                       │ - Generate code │
-            │ ◀─── Compiled Catalog ─────────────── │                 │
-            │      (JSON/PSON format)               └───────┬────────-┘
-            │                                               │
-    ┌───────▼────────┐                                      │
-    │ 4. RECEIVE &   │                                      │
-    │ PARSE CATALOG  │                                      │
-    └───────┬────────┘                                      │
-            │                                               │
-    ┌───────▼────────┐                                      │
-    │ 5. APPLY       │                                      │
-    │ CATALOG        │                                      │
-    │ - Create files │                                      │
-    │ - Install pkgs │                                      │
-    │ - Start svc    │                                      │
-    └───────┬────────┘                                      │
-            │                                               │
-      ██████▼██████                                         │
-      ██            ██  ◀── THIS IS WHEN state.yaml         │
-      ██  CREATE    ██      IS CREATED!                     │
-      ██ state.yaml ██                                      │
-      ██            ██  Location:                           │
-      ████████████████  /var/cache/puppet/state/state.yaml  │
-            │                                               │
-    ┌───────▼────────┐                                      │
-    │ 6. SEND REPORT │ ─── Report Status ──────────────▶    │
-    │ (Optional)     │     (Success/Failure)                │
-    └───────┬────────┘                              ┌───────▼────────┐
-            │                                       │ 7. LOG REPORT  │
-            │                                       │ (Optional)     │
-    ┌───────▼────────┐                              └────────────────┘
-    │ 8. COMPLETE    │                                      │
-    │ "Applied       │                                      │
-    │ catalog in     │                                      │
-    │ 0.01 seconds"  │                                      │
-    └────────────────┘                                      │
-
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              IMPORTANT NOTES                                    │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                 │
-│ ✅ state.yaml is created ONLY after successful catalog application              │
-│                                                                                 │
-│ ❌ state.yaml is NOT created if:                                                │
-│    • Certificate is not signed (autosign should handle this automatically)     │
-│    • Network connectivity fails                                                 │
-│    • Catalog compilation errors                                                 │
-│    • Agent fails to apply catalog                                               │
-│                                                                                 │
-│ 📄 state.yaml contains:                                                         │
-│    • Last run timestamp                                                         │
-│    • Configuration version                                                      │
-│    • Environment used                                                           │
-│    • Puppet version                                                             │
-│    • Transaction completion status                                              │
-│                                                                                 │
-└─────────────────────────────────────────────────────────────────────────────────┘
-
-CONSOLE OUTPUT MAPPING:
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│ "Info: Downloaded certificate..."           │  Steps 1-2                        │
-│ "Notice: Requesting catalog from puppet..."  │  Step 2                          │
-│ "Notice: Catalog compiled by puppet..."      │  Step 3                          │
-│ "Info: Applying configuration version..."    │  Step 5 (start)                  │
-│ "Info: Creating state file..."               │  ██ state.yaml creation ██       │
-│ "Notice: Applied catalog in X seconds"       │  Step 8                          │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
