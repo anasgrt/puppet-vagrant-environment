@@ -8,8 +8,11 @@ Vagrant.configure("2") do |config|
   config.vm.box = "bento/ubuntu-24.04"
 
   # Synced folders for development
-  config.vm.synced_folder "../puppet-modules", "/etc/puppetlabs/code/environments/production/modules", create: true
-  config.vm.synced_folder "../manifests", "/etc/puppetlabs/code/environments/production/manifests", create: true
+  [
+    ["../puppet-modules", "/etc/puppetlabs/code/environments/production/modules"],
+    ["../manifests", "/etc/puppetlabs/code/environments/production/manifests"],
+    ["../hiera", "/etc/puppetlabs/code/environments/production/hiera"]
+  ].each { |local, remote| config.vm.synced_folder(local, remote, create: true) }
 
   config.vm.define 'puppet' do |puppet|
     puppet.vm.hostname = 'puppet.localdomain'
