@@ -182,11 +182,13 @@ The environment uses autosign, so certificate issues should be rare. If you enco
 
 ## Configuration Files
 
+
 ### Key Configuration Locations
 
 - **Puppet Server Config**: `/etc/puppetlabs/puppet/puppet.conf`
 - **Manifests**: `/etc/puppetlabs/code/environments/production/manifests/`
 - **Modules**: `/etc/puppetlabs/code/environments/production/modules/`
+- **Hiera Config**: `/etc/puppetlabs/code/environments/production/hiera.yaml` (symlinked to `hiera/hiera.yaml` for live editing)
 - **Agent Config**: `/etc/puppetlabs/puppet/puppet.conf`
 - **Agent Logs**: `/var/log/puppetlabs/puppet/`
 
