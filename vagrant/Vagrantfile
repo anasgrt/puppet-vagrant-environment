@@ -44,6 +44,14 @@ Vagrant.configure("2") do |config|
       systemctl start puppetserver && systemctl enable puppetserver
       sleep 10
 
+      # Create symlink for hiera.yaml from hiera directory to expected location
+      if [ -f /etc/puppetlabs/code/environments/production/hiera/hiera.yaml ]; then
+        ln -sf /etc/puppetlabs/code/environments/production/hiera/hiera.yaml /etc/puppetlabs/code/environments/production/hiera.yaml
+        echo "Hiera configuration symlinked successfully"
+      else
+        echo "Warning: hiera.yaml not found in hiera directory, Puppet will use defaults"
+      fi
+
       echo 'PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/puppetlabs/bin"' > /etc/environment
       echo 'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/puppetlabs/bin"' >> /root/.bashrc
       echo 'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/puppetlabs/bin"' >> /home/vagrant/.bashrc
