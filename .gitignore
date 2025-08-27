@@ -39,3 +39,4 @@ id_rsa*
 ssl/
 manifests/
 Puppet-modules/
+hiera/
